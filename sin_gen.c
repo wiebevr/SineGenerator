@@ -1,6 +1,10 @@
-#include <aduc832.h>
+#include "lcd.h"
+
 
 void main(void)
 {
-	
+    while (1)
+    {
+
+    }
 }

@@ -1,4 +1,5 @@
 #include "lcd.h"
+#include "aduc832.h"
 
 char g_flags;
 #define TIMER_FLAG 0x01
@@ -44,4 +45,17 @@ void main(void)
             g_flags &= ~UART_FLAG;
         }
     }
+}
+
+void init_adc()
+{
+	ADCCON1 = 0xDC;   //11011100
+	ADCCON2 = 0x27;	  //00000111
+}
+inline char read_adc()
+{
+	char value;
+	// Return 8 most significant bits
+	value = ADCDATAH << 4;
+	return value | ((ADCDATAL & 0xf0) >> 4);
 }

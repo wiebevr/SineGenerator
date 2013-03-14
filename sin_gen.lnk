@@ -10,5 +10,6 @@
 -l liblong
 -l libfloat
 sin_gen.rel
+lcd.rel
 
 -e

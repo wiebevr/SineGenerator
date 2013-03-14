@@ -1,10 +1,13 @@
 #include "lcd.h"
-#include "aduc832.h"
+#include "reg832.h"
 
 char g_flags;
 #define TIMER_FLAG 0x01
-#define LED_FLAG 0x02
+#define LCD_FLAG 0x02
 #define UART_FLAG 0x04
+
+char read_adc();
+void init_adc();
 
 void update_timer()
 {
@@ -24,8 +27,10 @@ void update_uart()
 
 void main(void)
 {
+	init_adc();
     while (1)
     {
+		P2 = read_adc();
         if (g_flags & TIMER_FLAG)
         {
             update_timer();
@@ -52,7 +57,7 @@ void init_adc()
 	ADCCON1 = 0xDC;   //11011100
 	ADCCON2 = 0x27;	  //00000111
 }
-inline char read_adc()
+char read_adc()
 {
 	char value;
 	// Return 8 most significant bits

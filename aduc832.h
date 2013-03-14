@@ -165,19 +165,19 @@ sbit  CS2       = 0xDA;
 sbit  CS1       = 0xD9;
 sbit  CS0       = 0xD8;
 /*  I2CCON  */
-sbit  MDO       = I2CCON^7;
-sbit  MDE       = I2CCON^6;
-sbit  MCO       = I2CCON^5;
-sbit  MDI       = I2CCON^4;
-sbit  I2CM      = I2CCON^3;
-sbit  I2CRS     = I2CCON^2;
-sbit  I2CTX     = I2CCON^1;
-sbit  I2CI      = I2CCON^0;
+//sbit  MDO       = I2CCON^7;
+//sbit  MDE       = I2CCON^6;
+//sbit  MCO       = I2CCON^5;
+//sbit  MDI       = I2CCON^4;
+//sbit  I2CM      = I2CCON^3;
+//sbit  I2CRS     = I2CCON^2;
+//sbit  I2CTX     = I2CCON^1;
+//sbit  I2CI      = I2CCON^0;
 /*  DCON  */
-sbit  D1        = DCON^7;
-sbit  D1EN      = DCON^6;
-sbit  D0        = DCON^5;
-sbit  D0EN      = DCON^3;
+//sbit  D1        = DCON^7;
+//sbit  D1EN      = DCON^6;
+//sbit  D0        = DCON^5;
+//sbit  D0EN      = DCON^3;
 /* SPICON */
 sbit  ISPI      = 0xFF;
 sbit  WCOL      = 0xFE;

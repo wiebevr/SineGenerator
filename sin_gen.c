@@ -16,6 +16,11 @@ static unsigned short g_adc_history[NUM_ADC_HISTORY_VALUES];
 
 unsigned short read_adc();
 
+// DDS data:
+extern const char dac_high[];
+extern const char dac_low[];
+
+
 // Init stuff:
 void init_adc();
 void init_interrupts();
@@ -74,7 +79,7 @@ void init_interrupts()
     // Enable all interrupts.
     EA = 1;
     // Enable timer interrupts
-    ETI = 1;
+    IEIP2 = 0x04;
     // Enable timer 0 interrupts.
     ET0 = 1;
 

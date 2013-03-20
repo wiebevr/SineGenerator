@@ -8,16 +8,28 @@ char g_flags;
 #define UART_FLAG 0x04
 #define ADC_FLAG 0x08
 
+#define ADC_TIMER_RELOAD 64138
+
 #define NUM_ADC_HISTORY_VALUES 8
 static unsigned short g_adc_value = 0;
 static unsigned short g_adc_history[NUM_ADC_HISTORY_VALUES];
 
 unsigned short read_adc();
+
+// Init stuff:
 void init_adc();
+void init_interrupts();
+
+// Background routines:
 void update_timer();
 void update_lcd();
 void update_uart();
 void update_adc();
+
+// Interrupts:
+// 1 ms timer interrupt to update the MA array
+void adc_interrupt() interrupt 1;
+
 
 void main(void)
 {
@@ -25,6 +37,7 @@ void main(void)
     PLLCON = 0x00;
 
 	init_adc();
+    init_interrupts();
 	InitializeLCD();
 
 
@@ -55,10 +68,21 @@ void main(void)
     }
 }
 
-void init_adc()
+
+void init_interrupts()
 {
-	ADCCON1 = 0xDC;   //11011100
-	ADCCON2 = 0x27;	  //00000111
+    // Enable all interrupts.
+    EA = 1;
+    // Enable timer interrupts
+    ETI = 1;
+    // Enable timer 0 interrupts.
+    ET0 = 1;
+
+    // Timers:
+    // 16 Bit prescaler
+    TMOD = 0x01;
+    // Enable timer 0
+    TR0 = 1;
 }
 
 
@@ -85,6 +109,28 @@ void update_uart()
     // TODO: Implement 
 }
 
+// ---------------------------------------------------------------------- 
+// ADC Stuff:
+void init_adc()
+{
+	ADCCON1 = 0xDC;   //11011100
+	ADCCON2 = 0x27;	  //00000111
+}
+
+void adc_interrupt(void) interrupt 1
+{
+    static char it = 0;
+
+    // Reload the timer:
+    TH0 = (ADC_TIMER_RELOAD & 0xFF00)>>8;
+    TL0 = (ADC_TIMER_RELOAD & 0x00FF);
+
+    g_adc_history[it++] = read_adc();
+    // Limit it to 0-7
+    it &= 0x07;
+    g_flags |= ADC_FLAG;
+}
+
 unsigned short read_adc()
 {
 	// Return 12 most significant bits
@@ -93,18 +139,14 @@ unsigned short read_adc()
 
 void update_adc()
 {
-    static char it = 0;
     unsigned short adc_value = 0;
     int i;
-
-    g_adc_history[it++] = read_adc();
-    // Limit it to 0-7
-    it &= 0x07;
 
     for (i = 0; i < NUM_ADC_HISTORY_VALUES; ++i)
     {
         adc_value += g_adc_history[i];
     }
+    // Divide by eight
     g_adc_value = adc_value>>3;
 }
 

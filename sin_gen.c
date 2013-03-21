@@ -44,11 +44,11 @@ void main(void)
 	init_adc();
     init_interrupts();
 	InitializeLCD();
+	SetCursorOff();
 
 
     while (1)
     {
-		g_adc_value = read_adc();
 		update_lcd();
         if (g_flags & TIMER_FLAG)
         {
@@ -99,7 +99,6 @@ void update_timer()
 void update_lcd()
 {
 	char buffer[6] = "00000";
-    ClearScreen();
 	WriteStringAtPos(0,0,"ADC:");
 	sprintf(buffer, "%4.4d", (unsigned short)(g_adc_value*1.221));
 	buffer[2] = buffer[1];buffer[3] = buffer[2];

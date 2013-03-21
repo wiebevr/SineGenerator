@@ -3,7 +3,7 @@
 #include "lcd.h"
 
 char g_flags;
-char g_dds_inc = 1; // Initialize at 0.1Hz
+short g_dds_inc = 1; // Initialize at 0.1Hz
 
 
 #define TIMER_FLAG 0x01
@@ -12,7 +12,7 @@ char g_dds_inc = 1; // Initialize at 0.1Hz
 #define ADC_FLAG 0x08
 
 #define ADC_TIMER_RELOAD 64138
-#define DSS_TIMER_RELOAD 62125
+#define DDS_TIMER_RELOAD 62125
 
 #define NUM_ADC_HISTORY_VALUES 8
 static unsigned short g_adc_value = 0;
@@ -115,7 +115,10 @@ void update_lcd()
 	buffer[4] = 'V'; buffer[1] = '.';
 	WriteStringAtPos(0,10,buffer);
 	WriteStringAtPos(1,0,"Sinus:");
+	sprintf(buffer, "%4.4d", (unsigned short)(g_adc_value*(1.221/5)));
+	buffer[3] = 'H'; buffer[4] = 'z';
 	WriteStringAtPos(1,10,buffer);
+	WriteStringAtPos(1,16,"Hz");
 }
 
 void update_uart()
@@ -139,11 +142,11 @@ void dds_interrupt() interrupt 3
     }
 
     // Reload the timer:
-    TH0 = (DDS_TIMER_RELOAD & 0xFF00)>>8;
-    TL0 = (DDS_TIMER_RELOAD & 0x00FF);
-
+    TH1 = (DDS_TIMER_RELOAD & 0xFF00)>>8;
+    TL1 = (DDS_TIMER_RELOAD & 0x00FF);
+	
     DAC0H = dac_high[it];
-    DAC0L = dac_high[it];
+    DAC0L = dac_low[it];
 
     
 }
@@ -190,9 +193,9 @@ void update_adc()
     g_dds_inc = g_adc_value>>2;
     if (g_dds_inc == 0)
     {
-        g_dds_inc = 0;
+        g_dds_inc = 1;
     }
-    else if (g_dds_inc < 999)
+    else if (g_dds_inc > 999)
     {
         g_dds_inc = 999;
     }

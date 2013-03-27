@@ -8,4 +8,4 @@ dds_values.rel:
 
 sin_gen: sin_gen.c lcd.rel dds_values.rel
 	sdcc sin_gen.c lcd.rel dds_values.rel
-	packihx sin_gen.ihx > sin_gen.hex
+	packihx sin_gen.ihx > sin_gen.HEX

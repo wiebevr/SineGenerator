@@ -170,29 +170,29 @@ void answer_uart()
 
     char input = SBUF;
     
-    //putchar(input);
-    char_it++;
+    putchar(input);
     
     // To long.
-    if (char_it & 0x3 || (char_it == 3 && input != '\n'))
+    if (char_it > 3 || (char_it == 4 && input == '\n'))
     {
-        if (input == '\n')
-        {
-            char_it = 0;
-        }
-        else
-        {
-            // Prevent overflow.
-            char_it == 4;
-        }
-        return;
+		if(input == '\n')
+		{
+			char_it = 0;
+		}
+		else
+		{
+			// Prevent overflow.
+			char_it = 4;
+		}
+		return;
     }
-
-    printf("test2\n");
-    uart_text[char_it] = input; 
-
+	
+	uart_text[char_it] = input; 
+	//printf("%s\n\r", uart_text);
+	char_it++;
+			
     // We only need to fill the buffer.
-    if (char_it != 3)
+    if (char_it != 4)
     {
         return;
     }
@@ -201,19 +201,20 @@ void answer_uart()
     // Interpret the command.
     // Hexadecimal freq
     printf("test\n");
-    if (strncmp(":FH\n", uart_text, 5) == 0)
+    if (strncmp(":FH\r", uart_text, 4) == 0)
     {
-        // TODO: Juiste waarde berekenen
-        printf("Current frequency: %x\n", g_adc_value);
+        printf("qsgqsdg");
+		// TODO: Juiste waarde berekenen
+        //printf("Current frequency: %x\n", g_adc_value);
     }
     // Decimal freq
-    else if (strncmp(":FD\n", uart_text, 5) == 0)
+    else if (strncmp(":FD\r", uart_text, 4) == 0)
     {
         // TODO: Juiste waarde berekenen
         printf("Decimal freq: \n");
     }
     // Decimal freq
-    else if (strncmp(":VD\n", uart_text, 5) == 0)
+    else if (strncmp(":VD\r", uart_text, 4) == 0)
     {
         // TODO: Juiste waarde berekenen
         printf("Voltage: \n");
@@ -285,9 +286,8 @@ void update_adc()
     }
     // Divide by eight
     g_adc_value = adc_value>>3;
-
-    // TODO: Optimise me
-    g_dds_inc = g_adc_value / 4.1001001001001;
+    g_dds_inc = g_adc_value>>2;
+	
     if (g_dds_inc == 0)
     {
         g_dds_inc = 1;
@@ -296,5 +296,6 @@ void update_adc()
     {
         g_dds_inc = 999;
     }
+	
 }
 

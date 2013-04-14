@@ -19,10 +19,10 @@ unsigned short g_dds_inc = 1; // Initialize at 0.1Hz
 #define NUM_ADC_HISTORY_VALUES 8
 
 // Errors on leds:
-static unsigned char g_uart_error_status;
-#define NO_ERROR 0
-#define SYNTAX_ERROR 1
-#define TO_LONG_ERROR 2
+#define NO_ERROR 0xFF
+#define SYNTAX_ERROR 0x1F
+#define TO_LONG_ERROR 0x3F
+static unsigned volatile char g_uart_error_status = NO_ERROR;
 
 static unsigned short g_adc_value = 0;
 static unsigned short g_adc_history[NUM_ADC_HISTORY_VALUES];
@@ -50,6 +50,10 @@ void update_adc();
 // 1 ms timer interrupt to update the MA array
 void adc_interrupt() interrupt 1;
 void dds_interrupt() interrupt 3;
+void error_code_interrupt() interrupt 10;
+
+// Helper functions
+void process_input_string(char *input);
 
 
 void main(void)
@@ -59,8 +63,8 @@ void main(void)
 
 	init_adc();
     init_dac();
-    init_uart();
     init_interrupts();
+    init_uart();
 	InitializeLCD();
 	SetCursorOff();
 
@@ -81,6 +85,7 @@ void main(void)
         if(RI)
         {
             answer_uart();
+            //P2 = g_uart_error_status;
             //g_flags &= ~UART_FLAG;
             RI = 0;
         }
@@ -98,13 +103,12 @@ void init_interrupts()
     // Enable all interrupts.
     EA = 1;
     // Enable timer interrupts
-    IEIP2 = 0x04;
     // Enable timer 0 interrupts.
     ET0 = 1;
     // Enable timer 0 interrupts.
     ET1 = 1;
-    // Enable serial port interrupts.
-    ES = 1;
+    // Disable serial port interrupts!
+    ES = 0;
 
     // Timers:
     // 16 Bit prescaler on timers 0, 8 bit auto reload on timer 1
@@ -116,6 +120,14 @@ void init_interrupts()
 
     // Auto reload
     TH1 = DDS_TIMER_RELOAD;
+
+
+    // Configure TIC
+    //ETI = 1;
+    IEIP2 = 0x04;
+    TIMECON = 3;
+    INTVAL = 64;
+
 }
 
 void update_timer()
@@ -124,7 +136,7 @@ void update_timer()
 
 void update_lcd()
 {
-#if 1
+#if 0
 	char buffer[6] = "00000";
 	WriteStringAtPos(0,0,"ADC:");
 	sprintf(buffer, "%4.4d", (unsigned short)(g_adc_value*1.221));
@@ -137,12 +149,20 @@ void update_lcd()
 	WriteStringAtPos(1,10,buffer);
 	WriteStringAtPos(1,16,"Hz");
 #else
-    // TODO: Possible optimization: only update necessary part of LCD.
-    char buffer[17];
-    sprintf(buffer, "ADC:      %4.4dV", (unsigned short)(g_adc_value * (1.221/1e3)));
-    WriteStringAtPos(0, 0, buffer);
-    sprintf(buffer, "Frequency: %2.dHz", (unsigned short)(g_adc_value * (1.221/50)));
-    WriteStringAtPos(1, 0, buffer);
+    char freq[10];
+    char voltage[10];
+    sprintf(freq, " %03.3d Hz", (unsigned short)(g_adc_value*(1.221/5)));
+    // Add point
+    freq[0] = freq[1];
+    freq[1] = freq[2];
+    freq[2] = '.';
+
+    sprintf(voltage, " %03.3d V", (unsigned short)(g_adc_value * 0.1221));
+    voltage[0] = voltage[1];
+    voltage[1] = '.';
+
+    WriteStringAtPos(0, 0, freq);
+    WriteStringAtPos(0, 10, voltage);
 #endif
 
 }
@@ -165,67 +185,92 @@ void init_uart()
 void answer_uart()
 {
     // TODO: Implement 
-    static char uart_text[5] = {0};
-    static char char_it = 0;
+    static char input_string[7] = {0};
+    static char input_it = 0;
 
     char input = SBUF;
     
     putchar(input);
-    
-    // To long.
-    if (char_it > 3 || (char_it == 4 && input == '\n'))
-    {
-		if(input == '\n')
-		{
-			char_it = 0;
-		}
-		else
-		{
-			// Prevent overflow.
-			char_it = 4;
-		}
-		return;
-    }
-	
-	uart_text[char_it] = input; 
-	//printf("%s\n\r", uart_text);
-	char_it++;
-			
-    // We only need to fill the buffer.
-    if (char_it != 4)
-    {
-        return;
-    }
-    char_it = 0;
 
-    // Interpret the command.
-    // Hexadecimal freq
-    printf("test\n");
-    if (strncmp(":FH\r", uart_text, 4) == 0)
+    // Clear error status when ':' is received.
+    if (input == ':')
     {
-        printf("qsgqsdg");
-		// TODO: Juiste waarde berekenen
-        //printf("Current frequency: %x\n", g_adc_value);
+        g_uart_error_status = NO_ERROR;
     }
-    // Decimal freq
-    else if (strncmp(":FD\r", uart_text, 4) == 0)
+    
+    if (input == '\r')
     {
-        // TODO: Juiste waarde berekenen
-        printf("Decimal freq: \n");
+        // New line
+        input_string[input_it] = '\0';
+        process_input_string(input_string);
+        input_it = 0;
     }
-    // Decimal freq
-    else if (strncmp(":VD\r", uart_text, 4) == 0)
+    else if (input_it > 3)
     {
-        // TODO: Juiste waarde berekenen
-        printf("Voltage: \n");
+        // Input to long
+        input_it = 4;
+        g_uart_error_status = TO_LONG_ERROR;
+    }
+    else
+    {
+        input_string[input_it] = input;
+        input_it++;
+    }
+}
+void process_input_string(char *input)
+{
+    // Little hack we could not allocate enough memory on the stack so we 
+    // reuse the input buffer.
+    char *buffer = input;
+
+    printf("\n");
+    if (strcmp(input, ":FH") == 0)
+    {
+        printf("%x\n\r", (unsigned int)(g_adc_value*(1.221/5)));
+
+    }
+    else if (strcmp(input, ":FD") == 0)
+    {
+        sprintf(buffer, " %03.3d Hz", (unsigned short)(g_adc_value*(1.221/5)));
+        // Add point
+        buffer[0] = buffer[1];
+        buffer[1] = buffer[2];
+        buffer[2] = '.';
+        printf("%s\n\r", buffer);
+    }
+    else if (strcmp(input, ":VD") == 0)
+    {
+        sprintf(buffer, " %03.3d V", (unsigned short)(g_adc_value * 0.1221));
+        buffer[0] = buffer[1];
+        buffer[1] = '.';
+        printf("%s\n\r", buffer);
+    }
+    else
+    {
+        g_uart_error_status = SYNTAX_ERROR;
     }
 }
 
 void putchar(char c)
 {
-	TI=0;	
+    TI=0;	
     SBUF=c;
-	while(!TI);
+    while(!TI);
+}
+
+// ---------------------------------------------------------------------- 
+// Error codes flickering:
+void error_code_interrupt() interrupt 10
+{
+    HTHSEC = 0;
+    if (P2 == 0xFF)
+    {
+        P2 = g_uart_error_status;
+    }
+    else
+    {
+        P2 = 0xFF;
+    }
 }
 
 
